@@ -37,23 +37,23 @@ def parse_llm_content(content: str) -> LlmResult:
         summary = str(value["summary"]).strip()
         rows = value["findings"]
     except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise LlmSchemaError("LLM ไม่ได้ส่ง JSON ตามสัญญา") from error
+        raise LlmSchemaError("LLM ส่งข้อมูลผิดรูปแบบ") from error
     if not isinstance(rows, list) or not summary:
-        raise LlmSchemaError("LLM response ขาด summary หรือ findings")
+        raise LlmSchemaError("คำตอบจาก LLM ไม่มีสรุปหรือรายการตรวจพบ")
     if not THAI_TEXT.search(summary):
-        raise LlmSchemaError("LLM summary ต้องเป็นภาษาไทย")
+        raise LlmSchemaError("LLM ต้องเขียนสรุปเป็นภาษาไทย")
     findings: list[Finding] = []
     for row in rows[:20]:
         if not isinstance(row, dict) or row.get("category") not in ALLOWED_CATEGORIES or row.get("severity") not in ALLOWED_SEVERITIES:
-            raise LlmSchemaError("LLM response มีหมวดหรือระดับที่ไม่รองรับ")
+            raise LlmSchemaError("LLM ส่งหมวดหรือระดับที่ระบบไม่รองรับ")
         evidence = str(row.get("evidence", "")).strip()
         reason = str(row.get("reason", "")).strip()
         page = int(row.get("page", 0))
         confidence = float(row.get("confidence", 0))
         if not evidence or not reason or page < 1 or not 0 <= confidence <= 1:
-            raise LlmSchemaError("LLM finding ขาดหลักฐาน เหตุผล หน้า หรือ confidence")
+            raise LlmSchemaError("รายการจาก LLM ไม่มีหลักฐาน เหตุผล เลขหน้า หรือค่าความมั่นใจ")
         if not THAI_TEXT.search(reason):
-            raise LlmSchemaError("LLM reason ต้องเป็นภาษาไทย")
+            raise LlmSchemaError("LLM ต้องเขียนเหตุผลเป็นภาษาไทย")
         findings.append(Finding(str(row["category"]), str(row["severity"]), "llm", evidence, page, reason, confidence))
     return LlmResult(summary, tuple(findings))
 
@@ -69,6 +69,7 @@ def analyze_with_llm(pages: list[PageText], *, timeout_seconds: float = 240) -> 
         "Return compact JSON with summary and findings. Allowed categories: " + ", ".join(sorted(ALLOWED_CATEGORIES)) + ". "
         "Each finding requires category, severity low|medium|high, exact evidence quoted from the supplied page, page, reason, confidence 0..1. "
         "The summary and reason must be written in Thai. The evidence must remain an exact quote in its original language from the document. "
+        "Use concise, natural Thai. Write each summary and reason as one sentence. Avoid slogans, filler, repetition, and translated-sounding phrasing. "
         "Do not translate or paraphrase evidence. Do not flag normal procurement/legal requirements without document-specific restrictive evidence. "
         "Separate quotation from interpretation."
     )

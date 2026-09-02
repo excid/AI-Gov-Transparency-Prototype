@@ -21,6 +21,8 @@ class TorLlmTests(unittest.TestCase):
         system_prompt = post.call_args.kwargs["json"]["messages"][0]["content"]
         self.assertIn("summary and reason must be written in Thai", system_prompt)
         self.assertIn("evidence must remain an exact quote", system_prompt)
+        self.assertIn("concise, natural Thai", system_prompt)
+        self.assertIn("one sentence", system_prompt)
 
     def test_preserves_long_llm_evidence_and_reason_without_character_slicing(self):
         evidence = "หลักฐาน" * 80

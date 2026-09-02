@@ -46,22 +46,22 @@ def analyze_pages(
     model = score_preaward(features, model_artifact)
     warnings: list[str] = []
     if llm_result is None:
-        warnings.append("LLM ไม่พร้อมใช้งาน ผลลัพธ์ยังมีการตรวจด้วยกฎและ ML")
+        warnings.append("ระบบไม่ได้ใช้ LLM ในครั้งนี้ ผลตรวจมาจากกฎและ ML")
     if model.abstained:
-        warnings.append(f"ML งดให้คะแนน: {model.reason}")
+        warnings.append(f"ระบบไม่ประเมินด้วย ML: {model.reason}")
     if any(page.quality < 0.5 for page in pages):
-        warnings.append("บางหน้ามีคุณภาพ OCR ต่ำ ควรเปิด PDF ตรวจข้อความต้นฉบับ")
+        warnings.append("ระบบอ่านข้อความบางหน้าได้ไม่ชัด โปรดตรวจเอกสารต้นฉบับ")
     combined = _deduplicate(rules + (list(llm_result.findings) if llm_result else []))
     return {
         "status": "completed_with_warnings" if warnings else "completed",
-        "summary": llm_result.summary if llm_result else "ผลคัดกรองเบื้องต้นจากข้อความ TOR",
+        "summary": llm_result.summary if llm_result else "สรุปจากกฎตรวจสอบใน TOR",
         "pageCount": len(pages),
         "ocrPages": sum(page.ocr_used for page in pages),
         "findings": [_finding_dict(item) for item in combined],
         "features": features.as_model_row(),
         "model": asdict(model),
         "warnings": warnings,
-        "disclaimer": "เป็นสัญญาณเพื่อจัดลำดับการตรวจสอบ ไม่ใช่ข้อสรุปว่ามีการทุจริต",
+        "disclaimer": "ผู้ตรวจต้องยืนยันทุกประเด็นจากเอกสารต้นฉบับก่อนนำผลไปใช้",
     }
 
 

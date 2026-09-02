@@ -28,6 +28,18 @@ class PreAwardArtifact:
 
 
 @dataclass(frozen=True)
+class SimilarProject:
+    project_id: str
+    department: str
+    fiscal_year: int | None
+    budget_baht: float | None
+    purchase_method: str
+    project_type: str
+    duration_days: float | None
+    similarity_percent: float
+
+
+@dataclass(frozen=True)
 class ModelResult:
     abstained: bool
     reason: str
@@ -36,6 +48,7 @@ class ModelResult:
     model_version: str = "tor-isolation-forest-0.1"
     cohort_size: int = 0
     comparable_criteria: tuple[str, ...] = ()
+    similar_projects: tuple[SimilarProject, ...] = ()
 
 
 def _training_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -52,7 +65,7 @@ def _training_features(frame: pd.DataFrame) -> pd.DataFrame:
 
 def fit_preaward_model(frame: pd.DataFrame, *, max_rows: int = 1000, random_state: int = 42) -> PreAwardArtifact:
     if len(frame) < 30:
-        raise ValueError("ต้องมีโครงการ GovSpending อย่างน้อย 30 รายการ")
+        raise ValueError("ต้องมีข้อมูล GovSpending อย่างน้อย 30 โครงการ")
     sampled = frame.sample(n=min(max_rows, len(frame)), random_state=random_state).reset_index(drop=True)
     return PreAwardArtifact(sampled, max_rows, random_state)
 
@@ -67,7 +80,7 @@ def save_preaward_artifact(artifact: PreAwardArtifact, path: str | Path) -> Path
 def load_preaward_artifact(path: str | Path) -> PreAwardArtifact:
     artifact = joblib.load(Path(path))
     if not isinstance(artifact, PreAwardArtifact) or artifact.model_version != "tor-isolation-forest-0.1":
-        raise ValueError("ไฟล์โมเดล TOR ไม่ตรงกับสัญญารุ่นปัจจุบัน")
+        raise ValueError("รุ่นของแบบจำลอง TOR ไม่ตรงกับระบบ")
     return artifact
 
 
@@ -96,9 +109,9 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
     row = features.as_model_row()
     available = sum(row[column] is not None for column in MODEL_COLUMNS[:-1])
     if available < 2:
-        return ModelResult(True, "ข้อมูลไม่พอ: ต้องมีตัวเลขก่อนประกาศอย่างน้อย 2 ตัวแปร")
+        return ModelResult(True, "ข้อมูลตัวเลขไม่พอ ต้องพบอย่างน้อย 2 รายการจากวงเงิน ราคากลาง และระยะเวลา")
     if artifact is None:
-        return ModelResult(True, "ยังไม่มีโมเดล GovSpending ที่ผ่านการฝึก")
+        return ModelResult(True, "ไม่พบข้อมูล GovSpending สำหรับสร้างแบบจำลอง")
     cohort, criteria = _cohort(features, artifact.training_rows)
     matrix = _training_features(cohort)
     pipeline = Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", RobustScaler())])
@@ -107,6 +120,25 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
     model.fit(transformed)
     reference_scores = -model.score_samples(transformed)
     input_frame = pd.DataFrame([{column: row[column] for column in MODEL_COLUMNS}])
-    raw = float(-model.score_samples(pipeline.transform(input_frame))[0])
+    input_transformed = pipeline.transform(input_frame)
+    raw = float(-model.score_samples(input_transformed)[0])
     percentile = round(float((reference_scores <= raw).mean() * 100), 2)
-    return ModelResult(False, "", percentile, raw, artifact.model_version, len(cohort), criteria)
+    distances = np.linalg.norm(transformed - input_transformed[0], axis=1)
+    nearest_positions = np.argsort(distances)[:3]
+    similar: list[SimilarProject] = []
+    for position in nearest_positions:
+        project = cohort.iloc[int(position)]
+        year = pd.to_numeric(project.get("fiscal_year"), errors="coerce")
+        budget = pd.to_numeric(project.get("project_money_baht"), errors="coerce")
+        duration = pd.to_numeric(project.get("mean_contract_duration_days"), errors="coerce")
+        similar.append(SimilarProject(
+            project_id=str(project.get("project_id", "ไม่ระบุ")),
+            department=str(project.get("dept_name") or "ไม่ระบุหน่วยงาน"),
+            fiscal_year=int(year) if pd.notna(year) else None,
+            budget_baht=float(budget) if pd.notna(budget) else None,
+            purchase_method=str(project.get("purchase_method_name") or "ไม่ระบุ"),
+            project_type=str(project.get("project_type_name") or "ไม่ระบุ"),
+            duration_days=float(duration) if pd.notna(duration) else None,
+            similarity_percent=round(float(100 / (1 + distances[int(position)])), 1),
+        ))
+    return ModelResult(False, "", percentile, raw, artifact.model_version, len(cohort), criteria, tuple(similar))

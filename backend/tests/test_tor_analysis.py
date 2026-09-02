@@ -27,6 +27,7 @@ class TorAnalysisTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed_with_warnings")
         self.assertEqual(result["findings"][0]["source"], "rule")
         self.assertTrue(result["model"]["abstained"])
+        self.assertEqual(result["model"]["similar_projects"], ())
         self.assertIn("LLM", " ".join(result["warnings"]))
 
     def test_does_not_double_count_same_category_and_page(self):

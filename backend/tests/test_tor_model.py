@@ -34,6 +34,37 @@ class TorModelTests(unittest.TestCase):
             path = save_preaward_artifact(fit_preaward_model(frame, max_rows=30), Path(directory) / "model.joblib")
             self.assertEqual(load_preaward_artifact(path).model_version, "tor-isolation-forest-0.1")
 
+    def test_returns_three_nearest_projects_with_display_metadata(self):
+        frame = pd.DataFrame([
+            {
+                "project_id": f"P{i}",
+                "project_money_baht": 1_000_000 + i * 100_000,
+                "reference_price_baht": 950_000 + i * 95_000,
+                "mean_contract_duration_days": 100 + i,
+                "project_type_name": "งานก่อสร้าง",
+                "purchase_method_name": "e-bidding",
+                "dept_name": f"หน่วยงาน {i}",
+                "fiscal_year": 2568,
+            }
+            for i in range(40)
+        ])
+        artifact = fit_preaward_model(frame, max_rows=40, random_state=42)
+        features = PreAwardFeatures(
+            log_budget=__import__("math").log1p(2_000_000),
+            reference_to_budget_ratio=0.95,
+            log_duration_days=__import__("math").log1p(110),
+            missing_core_field_count=0,
+            project_type_name="งานก่อสร้าง",
+            purchase_method_name="e-bidding",
+        )
+
+        result = score_preaward(features, artifact)
+
+        self.assertEqual(len(result.similar_projects), 3)
+        self.assertEqual(result.similar_projects[0].project_id, "P10")
+        self.assertEqual(result.similar_projects[0].department, "หน่วยงาน 10")
+        self.assertGreaterEqual(result.similar_projects[0].similarity_percent, result.similar_projects[1].similarity_percent)
+
 
 if __name__ == "__main__":
     unittest.main()

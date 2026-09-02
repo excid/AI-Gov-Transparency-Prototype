@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'AI-GOV Transparency | TOR Risk Screening',
-  description: 'ระบบคัดกรองสัญญาณความเสี่ยงใน TOR ด้วย AI กฎตรวจสอบ และข้อมูลเทียบเคียง',
+  description: 'เครื่องมือช่วยตรวจข้อกำหนดใน TOR พร้อมเหตุผล เลขหน้า และโครงการเปรียบเทียบ',
 };
 export default function RootLayout({
   children,

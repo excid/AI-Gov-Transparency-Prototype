@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,21 @@ class PageText:
 
 class PdfExtractionError(ValueError):
     pass
+
+
+def embedded_text_is_reliable(text: str, *, minimum_visible: int = 40) -> bool:
+    """Reject empty or obviously damaged PDF text layers before trusting them."""
+    visible = [character for character in text if character.isprintable() and not character.isspace()]
+    if len(visible) < minimum_visible:
+        return False
+    replacement_count = sum(character in {"�", "□", "\x00"} for character in text)
+    if replacement_count / len(visible) > 0.02:
+        return False
+    meaningful = sum(character.isalnum() or "ก" <= character <= "๙" for character in visible)
+    if meaningful / len(visible) < 0.55:
+        return False
+    repeated_garbage = re.search(r"([^\s])\1{7,}", text)
+    return repeated_garbage is None
 
 
 def extract_pdf_pages(
@@ -51,7 +67,7 @@ def extract_pdf_pages(
         embedded = (page.extract_text() or "").strip()
         extracted.append(embedded)
 
-    missing = [index for index, text in enumerate(extracted, start=1) if len(text) < 40]
+    missing = [index for index, text in enumerate(extracted, start=1) if not embedded_text_is_reliable(text)]
     recognized = ocr_pages(payload, missing) if missing and ocr_pages is not None else {}
 
     results: list[PageText] = []
