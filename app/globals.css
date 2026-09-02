@@ -9,6 +9,7 @@
   --red: #d9363e;
   --amber: #d18400;
   --green: #13845b;
+  --font-thai: 'TH Sarabun New', 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif;
 }
 * {
   box-sizing: border-box;
@@ -20,7 +21,8 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
+  font-family: var(--font-thai);
+  font-size: 18px;
 }
 button,
 input {
@@ -73,7 +75,7 @@ input {
   color: var(--blue);
 }
 .prototype {
-  font: 700 10px/1 monospace;
+  font: 700 15px/1 var(--font-thai);
   padding: 7px 9px;
   border: 1px solid #b8c5d4;
   border-radius: 4px;
@@ -86,9 +88,7 @@ input {
 }
 .eyebrow,
 .kicker {
-  font:
-    700 11px/1.2 ui-monospace,
-    monospace;
+  font: 700 16px/1.2 var(--font-thai);
   letter-spacing: 0.11em;
   color: var(--blue);
 }
@@ -141,6 +141,91 @@ input {
 .results-panel {
   border-radius: 0 16px 16px 0;
 }
+.workbench.result-mode {
+  grid-template-columns: 1fr;
+  max-width: 980px;
+}
+.result-mode .results-panel {
+  border-radius: 16px;
+}
+.waiting-panel h2 {
+  margin: 10px 0;
+}
+.waiting-panel > p,
+.analysis-summary {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.waiting-panel ol {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+}
+.waiting-panel li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  color: var(--blue);
+}
+.waiting-panel li span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.waiting-panel li b {
+  color: var(--ink);
+}
+.analysis-error {
+  padding: 11px;
+  color: var(--red);
+  background: #fff0f0;
+  border: 1px solid #efb6b9;
+  font-size: 12px;
+}
+.result-meta {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.evidence blockquote {
+  margin: 0 0 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--blue);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.65;
+}
+.empty-findings {
+  padding: 20px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+.warnings {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.warnings summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.new-analysis {
+  width: 100%;
+  height: 46px;
+  margin-top: 18px;
+  border: 1px solid var(--ink);
+  background: white;
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+.new-analysis:hover {
+  background: var(--ink);
+  color: white;
+}
 .panel-head {
   display: flex;
   justify-content: space-between;
@@ -154,7 +239,7 @@ input {
 }
 .filetype,
 .risk-count {
-  font: 700 10px/1 monospace;
+  font: 700 15px/1 var(--font-thai);
   border-radius: 4px;
   padding: 7px 9px;
 }
@@ -275,6 +360,44 @@ input {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+.analysis-progress {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  background: #f8faff;
+}
+.progress-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+}
+.progress-copy span,
+.analysis-progress small {
+  color: var(--muted);
+}
+.progress-track {
+  height: 7px;
+  margin: 9px 0 0;
+  overflow: hidden;
+  background: #dfe7f1;
+}
+.progress-track i {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  transition: width 0.35s ease;
+}
+.progress-track.is-ocr i {
+  background: linear-gradient(90deg, var(--blue), #70a1ff, var(--blue));
+  background-size: 200% 100%;
+  animation: progress-pulse 1.5s linear infinite;
+}
+.analysis-progress small {
+  display: block;
+  margin-top: 7px;
+  font-size: 9px;
+}
 .privacy,
 .disclaimer {
   display: flex;
@@ -324,7 +447,7 @@ input {
   display: block;
 }
 .stage b {
-  font: 700 10px/1 monospace;
+  font: 700 15px/1 var(--font-thai);
   margin-top: 7px;
 }
 .stage small {
@@ -346,13 +469,11 @@ input {
   flex: 1;
 }
 .score strong {
-  font:
-    700 34px/1 ui-monospace,
-    monospace;
+  font: 700 40px/1 var(--font-thai);
   color: var(--red);
 }
 .score small {
-  font: 11px monospace;
+  font: 16px var(--font-thai);
   color: var(--muted);
 }
 .meter {
@@ -423,7 +544,7 @@ input {
   display: block;
 }
 .finding-title small {
-  font: 700 9px/1 monospace;
+  font: 700 14px/1 var(--font-thai);
   color: #7a8797;
   margin-bottom: 4px;
 }
@@ -490,7 +611,7 @@ input {
   border-bottom: 1px solid #ffffff26;
 }
 .method li > span {
-  font: 700 11px monospace;
+  font: 700 16px var(--font-thai);
   color: #6f87a3;
 }
 .method li > svg {
@@ -535,6 +656,11 @@ footer p {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes progress-pulse {
+  to {
+    background-position: -200% 0;
   }
 }
 @media (max-width: 800px) {

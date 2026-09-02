@@ -28,11 +28,11 @@ Users work with Thai PDF procurement documents, page and clause citations, proje
 
 ## Capabilities and Constraints
 
-- This initial repository is a design-only, one-page prototype shell.
+- The prototype uses a two-step, single-route flow: PDF upload followed by evidence-linked results.
 - The interface must visibly distinguish LLM extraction, rule-based checks, and ML comparison.
-- All displayed analysis is illustrative mock data until the backend is connected.
+- Uploaded PDFs are processed by a local Python service using Thai OCR, deterministic rules, Alibaba Qwen when configured, and an unsupervised GovSpending comparison model.
 - Every warning must be designed around source evidence, a transparent trigger, and a review limitation.
-- Real API calls, authentication, persistence, OCR, model execution, and scoring are intentionally deferred.
+- Files and OCR text are not persisted; missing LLM or ML inputs produce visible degraded or abstained states.
 
 ## Evidence on Hand
 

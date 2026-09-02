@@ -1,0 +1,11 @@
+node_modules
+.next
+.vinext
+dist
+.wrangler
+.git
+.env
+secrets
+backend
+outputs
+work

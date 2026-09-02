@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      ML_SERVICE_URL: http://ml:8000
+      NEXT_PUBLIC_ANALYSIS_URL: http://localhost:8000/analyze-tor
+    depends_on:
+      ml:
+        condition: service_healthy
+  ml:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      LLM_MODEL: qwen3.8-flash
+      TOR_MODEL_PATH: /app/data/models/tor-isolation-forest.joblib
+    volumes:
+      - paddle-models:/root/.paddlex
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  paddle-models:
