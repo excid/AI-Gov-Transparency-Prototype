@@ -3,10 +3,22 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ai_gov_transparency.data_prep import prepare_training_frame, write_training_csv
+from ai_gov_transparency.data_prep import prepare_training_frame, prepare_training_records, write_training_csv
 
 
 class DataPreparationTests(unittest.TestCase):
+    def test_preserves_project_name_for_comparison_cards(self):
+        frame = prepare_training_records([
+            {
+                "project_id": "P-001",
+                "project_name": "จ้างก่อสร้างอาคารศูนย์บริการ",
+                "year": 2568,
+                "dept_name": "กรมทดสอบ",
+            }
+        ])
+
+        self.assertEqual(frame.loc[0, "project_name"], "จ้างก่อสร้างอาคารศูนย์บริการ")
+
     def test_prepares_features_and_optional_sidecars(self):
         project_payload = {
             "data": [

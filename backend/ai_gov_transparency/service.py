@@ -49,12 +49,12 @@ async def analyze_tor_upload(file: UploadFile = File(...)) -> dict[str, Any]:
     if len(payload) > MAX_PDF_BYTES:
         raise HTTPException(status_code=413, detail="PDF ต้องมีขนาดไม่เกิน 50 MB")
     try:
-        return await run_in_threadpool(analyze_tor, payload)
+        return await run_in_threadpool(analyze_tor, payload, filename=file.filename)
     except PdfExtractionError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-def _progress_stream(payload: bytes):
+def _progress_stream(payload: bytes, filename: str | None):
     events: Queue[dict[str, Any] | None] = Queue()
 
     def report(stage: str, percent: int) -> None:
@@ -62,7 +62,7 @@ def _progress_stream(payload: bytes):
 
     def run() -> None:
         try:
-            result = analyze_tor(payload, on_progress=report)
+            result = analyze_tor(payload, filename=filename, on_progress=report)
             events.put({"type": "result", "data": result})
         except Exception as error:
             events.put({"type": "error", "message": str(error) or "วิเคราะห์ไม่สำเร็จ"})
@@ -82,7 +82,7 @@ async def analyze_tor_stream(file: UploadFile = File(...)) -> StreamingResponse:
     payload = await file.read(MAX_PDF_BYTES + 1)
     if len(payload) > MAX_PDF_BYTES:
         raise HTTPException(status_code=413, detail="PDF ต้องมีขนาดไม่เกิน 50 MB")
-    return StreamingResponse(_progress_stream(payload), media_type="application/x-ndjson")
+    return StreamingResponse(_progress_stream(payload, file.filename), media_type="application/x-ndjson")
 
 
 @app.post("/score")

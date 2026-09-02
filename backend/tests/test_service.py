@@ -9,7 +9,8 @@ from ai_gov_transparency.service import app
 
 class ScoringServiceTests(unittest.TestCase):
     def test_streams_progress_before_final_analysis(self):
-        def analyze(_payload, *, on_progress):
+        def analyze(_payload, *, filename, on_progress):
+            self.assertEqual(filename, "tor.pdf")
             on_progress("ocr", 15)
             on_progress("complete", 100)
             return {"summary": "done"}

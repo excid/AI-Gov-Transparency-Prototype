@@ -29,6 +29,7 @@ class LlmResult:
     summary: str
     findings: tuple[Finding, ...]
     model: str = "qwen3.8-flash"
+    project_name: str | None = None
 
 
 def parse_llm_content(content: str) -> LlmResult:
@@ -42,6 +43,10 @@ def parse_llm_content(content: str) -> LlmResult:
         raise LlmSchemaError("คำตอบจาก LLM ไม่มีสรุปหรือรายการตรวจพบ")
     if not THAI_TEXT.search(summary):
         raise LlmSchemaError("LLM ต้องเขียนสรุปเป็นภาษาไทย")
+    raw_project_name = value.get("project_name")
+    project_name = str(raw_project_name).strip()[:300] if raw_project_name is not None else None
+    if not project_name:
+        project_name = None
     findings: list[Finding] = []
     for row in rows[:20]:
         if not isinstance(row, dict) or row.get("category") not in ALLOWED_CATEGORIES or row.get("severity") not in ALLOWED_SEVERITIES:
@@ -55,7 +60,7 @@ def parse_llm_content(content: str) -> LlmResult:
         if not THAI_TEXT.search(reason):
             raise LlmSchemaError("LLM ต้องเขียนเหตุผลเป็นภาษาไทย")
         findings.append(Finding(str(row["category"]), str(row["severity"]), "llm", evidence, page, reason, confidence))
-    return LlmResult(summary, tuple(findings))
+    return LlmResult(summary, tuple(findings), project_name=project_name)
 
 
 def analyze_with_llm(pages: list[PageText], *, timeout_seconds: float = 240) -> LlmResult | None:
@@ -66,7 +71,8 @@ def analyze_with_llm(pages: list[PageText], *, timeout_seconds: float = 240) -> 
     page_text = "\n\n".join(f"[PAGE {page.page_number}]\n{page.text}" for page in pages)[:160_000]
     system = (
         "You screen Thai TOR documents for competition-limiting clauses, not corruption. "
-        "Return compact JSON with summary and findings. Allowed categories: " + ", ".join(sorted(ALLOWED_CATEGORIES)) + ". "
+        "Return compact JSON with project_name, summary and findings. project_name must be the official project title stated in the TOR; "
+        "use null when the supplied document text does not support a title, and never use or infer a filename. Allowed categories: " + ", ".join(sorted(ALLOWED_CATEGORIES)) + ". "
         "Each finding requires category, severity low|medium|high, exact evidence quoted from the supplied page, page, reason, confidence 0..1. "
         "The summary and reason must be written in Thai. The evidence must remain an exact quote in its original language from the document. "
         "Use concise, natural Thai. Write each summary and reason as one sentence. Avoid slogans, filler, repetition, and translated-sounding phrasing. "

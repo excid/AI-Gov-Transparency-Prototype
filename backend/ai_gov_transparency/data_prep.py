@@ -35,6 +35,7 @@ THAI_MONTHS = {
 }
 
 IDENTIFIER_COLUMNS = ["project_id", "fiscal_year"]
+DISPLAY_COLUMNS = ["project_name"]
 FEATURE_COLUMNS = [
     "project_money_baht",
     "reference_price_baht",
@@ -62,7 +63,7 @@ CATEGORY_COLUMNS = [
     "dept_name",
     "province",
 ]
-OUTPUT_COLUMNS = IDENTIFIER_COLUMNS + FEATURE_COLUMNS + CATEGORY_COLUMNS + ["outcome_label"]
+OUTPUT_COLUMNS = IDENTIFIER_COLUMNS + DISPLAY_COLUMNS + FEATURE_COLUMNS + CATEGORY_COLUMNS + ["outcome_label"]
 
 
 class DataPreparationError(ValueError):
@@ -222,6 +223,7 @@ def _project_row(project: Mapping[str, Any]) -> dict[str, Any] | None:
     required = [budget, reference_price, agreed_price, _text(_value(project, "dept_name")), _text(_value(project, "province"))]
     return {
         "project_id": project_id,
+        "project_name": _text(_value(project, "project_name")),
         "fiscal_year": _number(_value(project, "year")),
         "project_money_baht": budget,
         "reference_price_baht": reference_price,

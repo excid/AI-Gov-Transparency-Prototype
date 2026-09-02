@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
@@ -43,6 +43,8 @@ def analyze_pages(
 ) -> dict[str, Any]:
     rules = evaluate_rules(pages)
     features = extract_preaward_features(pages)
+    if not features.project_name and llm_result and llm_result.project_name:
+        features = replace(features, project_name=llm_result.project_name)
     model = score_preaward(features, model_artifact)
     warnings: list[str] = []
     if llm_result is None:
@@ -58,6 +60,7 @@ def analyze_pages(
         "pageCount": len(pages),
         "ocrPages": sum(page.ocr_used for page in pages),
         "findings": [_finding_dict(item) for item in combined],
+        "current_project": features.as_project_summary(),
         "features": features.as_model_row(),
         "model": asdict(model),
         "warnings": warnings,
@@ -68,6 +71,7 @@ def analyze_pages(
 def analyze_tor(
     payload: bytes,
     *,
+    filename: str | None = None,
     on_progress: Callable[[str, int], None] | None = None,
 ) -> dict[str, Any]:
     report = on_progress or (lambda _stage, _percent: None)
@@ -81,6 +85,8 @@ def analyze_tor(
     report("screening", 90)
     model_artifact = load_model_artifact()
     result = analyze_pages(pages, llm_result=llm, model_artifact=model_artifact)
+    if not result["current_project"]["project_name"] and filename:
+        result["current_project"]["project_name"] = Path(filename).stem.strip() or None
     result["documentId"] = document_id(payload)
     report("complete", 100)
     return result

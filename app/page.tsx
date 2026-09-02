@@ -15,14 +15,16 @@ import {
 } from 'lucide-react';
 import { getCachedAnalysis, IndexedDbAnalysisStore, putCachedAnalysis } from '../lib/analysis-cache';
 import { findingPresentation } from '../lib/finding-display';
+import { projectTitle } from '../lib/project-display';
 import { decodeProgressLines, type ProgressEvent } from '../lib/progress-stream';
 
 type Finding = { category: string; severity: 'low' | 'medium' | 'high'; source: 'rule' | 'llm'; evidence: string; page: number; reason: string; confidence: number };
-type SimilarProject = { project_id: string; department: string; fiscal_year: number | null; budget_baht: number | null; purchase_method: string; project_type: string; duration_days: number | null; similarity_percent: number };
-type Analysis = { summary: string; pageCount: number; ocrPages: number; findings: Finding[]; model: { abstained: boolean; reason: string; percentile?: number | null; cohort_size: number; comparable_criteria: string[]; similar_projects: SimilarProject[] }; warnings: string[]; disclaimer: string };
+type ProjectSummary = { project_name: string | null; fiscal_year: number | null; budget_baht: number | null; reference_price_baht: number | null; purchase_method: string | null; project_type: string | null; duration_days: number | null };
+type SimilarProject = { project_id: string; project_name: string | null; department: string; fiscal_year: number | null; budget_baht: number | null; purchase_method: string; project_type: string; duration_days: number | null; similarity_percent: number };
+type Analysis = { summary: string; pageCount: number; ocrPages: number; findings: Finding[]; current_project?: ProjectSummary; model: { abstained: boolean; reason: string; percentile?: number | null; cohort_size: number; comparable_criteria: string[]; similar_projects: SimilarProject[] }; warnings: string[]; disclaimer: string };
 const categoryLabels: Record<string, string> = { previous_work_percentage: 'สัดส่วนผลงานเดิม', brand_specific: 'ระบุยี่ห้อหรือรุ่น', unnecessary_certificate: 'ใบรับรองเฉพาะ', narrow_technical_requirement: 'ข้อกำหนดทางเทคนิคแคบ', experience_or_personnel: 'ประสบการณ์หรือบุคลากร', other_lock_spec: 'เงื่อนไขจำกัดอื่น' };
 const analysisUrl = process.env.NEXT_PUBLIC_ANALYSIS_URL ?? '/api/analyze-tor';
-const pipelineVersion = 'paddle-th-rules-ml-qwen-v5-ocr-quality';
+const pipelineVersion = 'paddle-th-rules-ml-qwen-v7-llm-project-name';
 const stageLabels: Record<string, string> = {
   preparing: 'เตรียมไฟล์',
   received: 'รับไฟล์แล้ว',
@@ -233,6 +235,20 @@ export default function Home() {
             </div>
             <span className="risk-count">{result.findings.length} ประเด็น</span>
           </div>
+          {result.current_project && <article className="current-project-card" aria-label="ข้อมูลโครงการที่กำลังวิเคราะห์">
+            <div className="current-project-heading">
+              <span><FileText size={16} />โครงการที่กำลังวิเคราะห์</span>
+              <h3>{result.current_project.project_name || 'ไม่พบชื่อโครงการใน TOR'}</h3>
+            </div>
+            <div className="current-project-details">
+              <span><b>ปีงบประมาณ</b>{result.current_project.fiscal_year ?? 'ไม่พบในเอกสาร'}</span>
+              <span><b>วงเงิน</b>{result.current_project.budget_baht == null ? 'ไม่พบในเอกสาร' : `${result.current_project.budget_baht.toLocaleString('th-TH')} บาท`}</span>
+              <span><b>ราคากลาง</b>{result.current_project.reference_price_baht == null ? 'ไม่พบในเอกสาร' : `${result.current_project.reference_price_baht.toLocaleString('th-TH')} บาท`}</span>
+              <span><b>วิธีจัดซื้อ</b>{result.current_project.purchase_method ?? 'ไม่พบในเอกสาร'}</span>
+              <span><b>ประเภท</b>{result.current_project.project_type ?? 'ไม่พบในเอกสาร'}</span>
+              <span><b>ระยะเวลา</b>{result.current_project.duration_days == null ? 'ไม่พบในเอกสาร' : `${result.current_project.duration_days} วัน`}</span>
+            </div>
+          </article>}
           <div className="score">
             <div>
               <span>ระดับความผิดปกติเมื่อเทียบโครงการคล้ายกัน</span>
@@ -298,8 +314,9 @@ export default function Home() {
                 <div className="similar-rank">{String(index + 1).padStart(2, '0')}</div>
                 <div className="similar-main">
                   <small>รหัสโครงการ {project.project_id}</small>
-                  <h3>{project.department}</h3>
+                  <h3>{projectTitle(project)}</h3>
                   <div className="similar-details">
+                    <span><b>หน่วยงาน</b>{project.department}</span>
                     <span><b>ปีงบประมาณ</b>{project.fiscal_year ?? 'ไม่ระบุ'}</span>
                     <span><b>วงเงิน</b>{project.budget_baht == null ? 'ไม่ระบุ' : `${project.budget_baht.toLocaleString('th-TH')} บาท`}</span>
                     <span><b>วิธีจัดซื้อ</b>{project.purchase_method}</span>

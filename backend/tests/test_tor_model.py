@@ -38,6 +38,7 @@ class TorModelTests(unittest.TestCase):
         frame = pd.DataFrame([
             {
                 "project_id": f"P{i}",
+                "project_name": f"โครงการก่อสร้าง {i}",
                 "project_money_baht": 1_000_000 + i * 100_000,
                 "reference_price_baht": 950_000 + i * 95_000,
                 "mean_contract_duration_days": 100 + i,
@@ -62,8 +63,40 @@ class TorModelTests(unittest.TestCase):
 
         self.assertEqual(len(result.similar_projects), 3)
         self.assertEqual(result.similar_projects[0].project_id, "P10")
+        self.assertEqual(result.similar_projects[0].project_name, "โครงการก่อสร้าง 10")
         self.assertEqual(result.similar_projects[0].department, "หน่วยงาน 10")
         self.assertGreaterEqual(result.similar_projects[0].similarity_percent, result.similar_projects[1].similarity_percent)
+
+    def test_project_name_similarity_can_outrank_a_slightly_closer_budget(self):
+        frame = pd.DataFrame([
+            {
+                "project_id": f"P{i}",
+                "project_name": "จ้างบำรุงรักษาระบบไฟฟ้า" if i == 11 else f"จัดซื้อวัสดุสำนักงาน {i}",
+                "project_money_baht": 1_000_000 + i * 100_000,
+                "reference_price_baht": 950_000 + i * 95_000,
+                "mean_contract_duration_days": 100 + i,
+                "project_type_name": "งานก่อสร้าง",
+                "purchase_method_name": "e-bidding",
+                "dept_name": f"หน่วยงาน {i}",
+                "fiscal_year": 2568,
+            }
+            for i in range(40)
+        ])
+        artifact = fit_preaward_model(frame, max_rows=40, random_state=42)
+        features = PreAwardFeatures(
+            log_budget=__import__("math").log1p(2_000_000),
+            reference_to_budget_ratio=0.95,
+            log_duration_days=__import__("math").log1p(110),
+            missing_core_field_count=0,
+            project_type_name="งานก่อสร้าง",
+            purchase_method_name="e-bidding",
+            project_name="จ้างบำรุงรักษาระบบไฟฟ้า",
+        )
+
+        result = score_preaward(features, artifact)
+
+        self.assertEqual(result.similar_projects[0].project_id, "P11")
+
 
 
 if __name__ == "__main__":

@@ -6,6 +6,11 @@ from ai_gov_transparency.tor_llm import LlmSchemaError, analyze_with_llm, parse_
 
 
 class TorLlmTests(unittest.TestCase):
+    def test_parses_project_name_as_structured_llm_output(self):
+        result = parse_llm_content('{"project_name":"จ้างก่อสร้างอาคารศูนย์บริการ","summary":"สรุป","findings":[]}')
+
+        self.assertEqual(result.project_name, "จ้างก่อสร้างอาคารศูนย์บริการ")
+
     def test_requests_thai_summary_and_explanations_from_llm(self):
         response = Mock()
         response.raise_for_status.return_value = None
@@ -19,6 +24,7 @@ class TorLlmTests(unittest.TestCase):
             analyze_with_llm([PageText(1, "ข้อกำหนด", False, 1.0)])
 
         system_prompt = post.call_args.kwargs["json"]["messages"][0]["content"]
+        self.assertIn("project_name", system_prompt)
         self.assertIn("summary and reason must be written in Thai", system_prompt)
         self.assertIn("evidence must remain an exact quote", system_prompt)
         self.assertIn("concise, natural Thai", system_prompt)

@@ -12,6 +12,7 @@ from pathlib import Path
 from sklearn.ensemble import IsolationForest
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import RobustScaler
 
 from .tor_features import PreAwardFeatures
@@ -30,6 +31,7 @@ class PreAwardArtifact:
 @dataclass(frozen=True)
 class SimilarProject:
     project_id: str
+    project_name: str
     department: str
     fiscal_year: int | None
     budget_baht: float | None
@@ -124,7 +126,16 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
     raw = float(-model.score_samples(input_transformed)[0])
     percentile = round(float((reference_scores <= raw).mean() * 100), 2)
     distances = np.linalg.norm(transformed - input_transformed[0], axis=1)
-    nearest_positions = np.argsort(distances)[:3]
+    numeric_similarity = 1 / (1 + distances)
+    combined_similarity = numeric_similarity
+    if features.project_name and "project_name" in cohort:
+        names = cohort["project_name"].fillna("").astype(str).tolist()
+        if any(name.strip() for name in names):
+            vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(2, 5), lowercase=True)
+            title_matrix = vectorizer.fit_transform([*names, features.project_name])
+            name_similarity = (title_matrix[:-1] @ title_matrix[-1].T).toarray().ravel()
+            combined_similarity = 0.6 * numeric_similarity + 0.4 * name_similarity
+    nearest_positions = np.argsort(-combined_similarity)[:3]
     similar: list[SimilarProject] = []
     for position in nearest_positions:
         project = cohort.iloc[int(position)]
@@ -133,12 +144,13 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
         duration = pd.to_numeric(project.get("mean_contract_duration_days"), errors="coerce")
         similar.append(SimilarProject(
             project_id=str(project.get("project_id", "ไม่ระบุ")),
+            project_name=str(project.get("project_name") or "ไม่พบชื่อโครงการในชุดข้อมูล"),
             department=str(project.get("dept_name") or "ไม่ระบุหน่วยงาน"),
             fiscal_year=int(year) if pd.notna(year) else None,
             budget_baht=float(budget) if pd.notna(budget) else None,
             purchase_method=str(project.get("purchase_method_name") or "ไม่ระบุ"),
             project_type=str(project.get("project_type_name") or "ไม่ระบุ"),
             duration_days=float(duration) if pd.notna(duration) else None,
-            similarity_percent=round(float(100 / (1 + distances[int(position)])), 1),
+            similarity_percent=round(float(combined_similarity[int(position)] * 100), 1),
         ))
     return ModelResult(False, "", percentile, raw, artifact.model_version, len(cohort), criteria, tuple(similar))
