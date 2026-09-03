@@ -25,7 +25,7 @@ type Analysis = { summary: string; pageCount: number; ocrPages: number; findings
 const categoryLabels: Record<string, string> = { previous_work_percentage: 'สัดส่วนผลงานเดิม', brand_specific: 'ระบุยี่ห้อหรือรุ่น', unnecessary_certificate: 'ใบรับรองเฉพาะ', narrow_technical_requirement: 'ข้อกำหนดทางเทคนิคแคบ', experience_or_personnel: 'ประสบการณ์หรือบุคลากร', other_lock_spec: 'เงื่อนไขจำกัดอื่น' };
 const analysisUrl =
   process.env.NEXT_PUBLIC_ANALYSIS_URL ??
-  'https://cooler-tomato-milk-compromise.trycloudflare.com/analyze-tor';
+  'http://127.0.0.1:8000/analyze-tor';
 const pipelineVersion = 'paddle-th-rules-ml-qwen-v7-llm-project-name';
 const stageLabels: Record<string, string> = {
   preparing: 'เตรียมไฟล์',

@@ -8,10 +8,10 @@ from ai_gov_transparency.service import app, cors_origins
 
 
 class ScoringServiceTests(unittest.TestCase):
-    def test_parses_deployed_site_origins_from_environment_value(self):
+    def test_parses_local_origins_from_environment_value(self):
         self.assertEqual(
-            cors_origins("https://example.chatgpt.site, http://localhost:3000 "),
-            ["https://example.chatgpt.site", "http://localhost:3000"],
+            cors_origins("http://127.0.0.1:3000, http://localhost:3000 "),
+            ["http://127.0.0.1:3000", "http://localhost:3000"],
         )
 
     def test_streams_progress_before_final_analysis(self):

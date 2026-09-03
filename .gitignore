@@ -10,6 +10,7 @@
 
 # testing
 /coverage
+/.pytest_cache/
 
 # next.js
 /.next/
@@ -28,7 +29,14 @@ yarn-error.log*
 
 # local environment
 .env*
+!.env.example
 /secrets/
+
+# Python and application caches
+__pycache__/
+*.py[cod]
+/.cache/
+/backend/data/cache/
 
 # deployment and generated files
 .vercel

@@ -21,7 +21,7 @@ services:
     environment:
       LLM_MODEL: qwen3.8-flash
       TOR_MODEL_PATH: /app/data/models/tor-isolation-forest.joblib
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://ai-gov-transparency.johnseekan.chatgpt.site,http://localhost:3000,http://127.0.0.1:3000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       MAX_CONCURRENT_ANALYSES: 1
       OMP_NUM_THREADS: 6
       MKL_NUM_THREADS: 6
