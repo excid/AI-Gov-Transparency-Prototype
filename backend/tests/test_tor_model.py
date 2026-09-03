@@ -97,6 +97,36 @@ class TorModelTests(unittest.TestCase):
 
         self.assertEqual(result.similar_projects[0].project_id, "P11")
 
+    def test_exact_name_match_contributes_twenty_similarity_points(self):
+        frame = pd.DataFrame([
+            {
+                "project_id": f"P{i}",
+                "project_name": "alpha" if i == 0 else f"zulu{i}",
+                "project_money_baht": 1_000_000,
+                "reference_price_baht": 950_000,
+                "mean_contract_duration_days": 100,
+                "project_type_name": "งานก่อสร้าง",
+                "purchase_method_name": "e-bidding",
+            }
+            for i in range(40)
+        ])
+        artifact = fit_preaward_model(frame, max_rows=40, random_state=42)
+        features = PreAwardFeatures(
+            log_budget=__import__("math").log1p(1_000_000),
+            reference_to_budget_ratio=0.95,
+            log_duration_days=__import__("math").log1p(100),
+            missing_core_field_count=0,
+            project_type_name="งานก่อสร้าง",
+            purchase_method_name="e-bidding",
+            project_name="alpha",
+        )
+
+        result = score_preaward(features, artifact)
+        scores = {project.project_id: project.similarity_percent for project in result.similar_projects}
+        nonmatching_score = next(score for project_id, score in scores.items() if project_id != "P0")
+
+        self.assertAlmostEqual(scores["P0"] - nonmatching_score, 20.0, places=1)
+
 
 
 if __name__ == "__main__":

@@ -134,7 +134,7 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
             vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(2, 5), lowercase=True)
             title_matrix = vectorizer.fit_transform([*names, features.project_name])
             name_similarity = (title_matrix[:-1] @ title_matrix[-1].T).toarray().ravel()
-            combined_similarity = 0.6 * numeric_similarity + 0.4 * name_similarity
+            combined_similarity = 0.8 * numeric_similarity + 0.2 * name_similarity
     nearest_positions = np.argsort(-combined_similarity)[:3]
     similar: list[SimilarProject] = []
     for position in nearest_positions:
