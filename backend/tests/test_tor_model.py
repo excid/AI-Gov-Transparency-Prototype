@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from ai_gov_transparency.tor_features import PreAwardFeatures
-from ai_gov_transparency.tor_model import fit_preaward_model, load_preaward_artifact, save_preaward_artifact, score_preaward
+from ai_gov_transparency.tor_model import PreAwardArtifact, fit_preaward_model, load_preaward_artifact, save_preaward_artifact, score_preaward
 
 
 class TorModelTests(unittest.TestCase):
@@ -97,7 +97,7 @@ class TorModelTests(unittest.TestCase):
 
         self.assertEqual(result.similar_projects[0].project_id, "P11")
 
-    def test_exact_name_match_contributes_twenty_similarity_points(self):
+    def test_missing_project_type_falls_back_to_twenty_percent_name_weight(self):
         frame = pd.DataFrame([
             {
                 "project_id": f"P{i}",
@@ -116,7 +116,7 @@ class TorModelTests(unittest.TestCase):
             reference_to_budget_ratio=0.95,
             log_duration_days=__import__("math").log1p(100),
             missing_core_field_count=0,
-            project_type_name="งานก่อสร้าง",
+            project_type_name=None,
             purchase_method_name="e-bidding",
             project_name="alpha",
         )
@@ -126,6 +126,36 @@ class TorModelTests(unittest.TestCase):
         nonmatching_score = next(score for project_id, score in scores.items() if project_id != "P0")
 
         self.assertAlmostEqual(scores["P0"] - nonmatching_score, 20.0, places=1)
+
+    def test_same_project_type_contributes_fifty_similarity_points(self):
+        frame = pd.DataFrame([
+            {
+                "project_id": f"P{i}",
+                "project_name": "โครงการมาตรฐาน",
+                "project_money_baht": 1_000_000,
+                "reference_price_baht": 950_000,
+                "mean_contract_duration_days": 100,
+                "project_type_name": "งานก่อสร้าง" if i == 0 else "ซื้อ",
+                "purchase_method_name": "e-bidding",
+            }
+            for i in range(40)
+        ])
+        artifact = PreAwardArtifact(frame, max_rows=40, random_state=42)
+        features = PreAwardFeatures(
+            log_budget=__import__("math").log1p(1_000_000),
+            reference_to_budget_ratio=0.95,
+            log_duration_days=__import__("math").log1p(100),
+            missing_core_field_count=0,
+            project_type_name="งานก่อสร้าง",
+            purchase_method_name="e-bidding",
+            project_name="โครงการมาตรฐาน",
+        )
+
+        result = score_preaward(features, artifact)
+        same_type = next(project for project in result.similar_projects if project.project_type == "งานก่อสร้าง")
+        different_type = next(project for project in result.similar_projects if project.project_type == "ซื้อ")
+
+        self.assertAlmostEqual(same_type.similarity_percent - different_type.similarity_percent, 50.0, places=1)
 
 
 

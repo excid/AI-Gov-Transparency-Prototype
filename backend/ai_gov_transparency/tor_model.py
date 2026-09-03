@@ -127,14 +127,23 @@ def score_preaward(features: PreAwardFeatures, artifact: PreAwardArtifact | None
     percentile = round(float((reference_scores <= raw).mean() * 100), 2)
     distances = np.linalg.norm(transformed - input_transformed[0], axis=1)
     numeric_similarity = 1 / (1 + distances)
-    combined_similarity = numeric_similarity
+    name_similarity = np.zeros(len(cohort))
+    can_compare_name = False
     if features.project_name and "project_name" in cohort:
         names = cohort["project_name"].fillna("").astype(str).tolist()
         if any(name.strip() for name in names):
             vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(2, 5), lowercase=True)
             title_matrix = vectorizer.fit_transform([*names, features.project_name])
             name_similarity = (title_matrix[:-1] @ title_matrix[-1].T).toarray().ravel()
-            combined_similarity = 0.8 * numeric_similarity + 0.2 * name_similarity
+            can_compare_name = True
+    can_compare_type = features.project_type_name and "project_type_name" in cohort
+    if can_compare_type:
+        project_types = cohort["project_type_name"].fillna("").astype(str).str.strip().str.casefold()
+        expected_type = str(features.project_type_name).strip().casefold()
+        type_similarity = (project_types == expected_type).astype(float).to_numpy()
+        combined_similarity = 0.5 * type_similarity + 0.4 * numeric_similarity + 0.1 * name_similarity
+    else:
+        combined_similarity = 0.8 * numeric_similarity + 0.2 * name_similarity if can_compare_name else numeric_similarity
     nearest_positions = np.argsort(-combined_similarity)[:3]
     similar: list[SimilarProject] = []
     for position in nearest_positions:
