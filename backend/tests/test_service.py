@@ -4,10 +4,16 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from ai_gov_transparency.service import app
+from ai_gov_transparency.service import app, cors_origins
 
 
 class ScoringServiceTests(unittest.TestCase):
+    def test_parses_deployed_site_origins_from_environment_value(self):
+        self.assertEqual(
+            cors_origins("https://example.chatgpt.site, http://localhost:3000 "),
+            ["https://example.chatgpt.site", "http://localhost:3000"],
+        )
+
     def test_streams_progress_before_final_analysis(self):
         def analyze(_payload, *, filename, on_progress):
             self.assertEqual(filename, "tor.pdf")

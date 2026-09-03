@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
+import os
 from queue import Queue
-from threading import Thread
+from threading import BoundedSemaphore, Thread
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -20,6 +21,20 @@ from .ocr import PdfExtractionError
 from .tor_analysis import analyze_tor
 
 
+def cors_origins(value: str | None = None) -> list[str]:
+    configured = value if value is not None else os.getenv("CORS_ALLOWED_ORIGINS", "")
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+_ANALYSIS_SLOTS = BoundedSemaphore(max(1, int(os.getenv("MAX_CONCURRENT_ANALYSES", "1"))))
+
+
+def _run_analysis(payload: bytes, *, filename: str | None, on_progress=None):
+    with _ANALYSIS_SLOTS:
+        return analyze_tor(payload, filename=filename, on_progress=on_progress)
+
+
 class ScoreRequest(BaseModel):
     projects: list[dict[str, Any]] = Field(min_length=1, max_length=1000)
     bids: list[dict[str, Any]] = Field(default_factory=list, max_length=5000)
@@ -29,7 +44,7 @@ class ScoreRequest(BaseModel):
 app = FastAPI(title="AI-Gov Transparency anomaly scorer", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=cors_origins(),
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
@@ -49,7 +64,7 @@ async def analyze_tor_upload(file: UploadFile = File(...)) -> dict[str, Any]:
     if len(payload) > MAX_PDF_BYTES:
         raise HTTPException(status_code=413, detail="PDF ต้องมีขนาดไม่เกิน 50 MB")
     try:
-        return await run_in_threadpool(analyze_tor, payload, filename=file.filename)
+        return await run_in_threadpool(_run_analysis, payload, filename=file.filename)
     except PdfExtractionError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -62,7 +77,7 @@ def _progress_stream(payload: bytes, filename: str | None):
 
     def run() -> None:
         try:
-            result = analyze_tor(payload, filename=filename, on_progress=report)
+            result = _run_analysis(payload, filename=filename, on_progress=report)
             events.put({"type": "result", "data": result})
         except Exception as error:
             events.put({"type": "error", "message": str(error) or "วิเคราะห์ไม่สำเร็จ"})
